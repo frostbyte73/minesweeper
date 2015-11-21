@@ -14,9 +14,4 @@ public class Reader implements Minefield {
     public int click(Point pt) {
         return 0;
     }
-
-    @Override
-    public void initialize() {
-
-    }
 }

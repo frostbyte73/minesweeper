@@ -6,6 +6,5 @@ import java.awt.*;
  */
 public interface Minefield {
     int read(Point pt);  // Read the value of a square
-    int click(Point pt); // Click a square, and return the value
-    void initialize();   // Do whatever setup needs to be done
+    int click(Point pt); // Click a square, and return the value\
 }
