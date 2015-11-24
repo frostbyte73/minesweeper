@@ -8,6 +8,7 @@ public class Sweeper {
 
     private static Stack<Cell> simple = new Stack<>();
     private static Stack<Cell> recursive = new Stack<>();
+    private static Stack<Cell> impossible = new Stack<>();
     private static Stack<Cell> zeroes = new Stack<>();
     private static Stack<Cell> marked = new Stack<>();
 
@@ -47,21 +48,35 @@ public class Sweeper {
                         loadSimple(b, true);
                     }
                 } else {
-                    // Need to give a more in-depth look
+                    // Need to give it a more in-depth look
                     recursive.push(c);
                 }
             } else if (!recursive.isEmpty()) {
-                // Do a recursive search for solutions
-                lost = true;
+                // TODO:Do a recursive search for solutions
+                Cell c = recursive.pop();
+                impossible.push(c);
             } else {
-                // Take a blind guess
-                lost = true;
+                // Logic has failed us - take a random guess
+                Cell c = impossible.pop();
+                Stack<Cell> unknowns = new Stack<>();
+                checkAdjacentSquares(unknowns, c);
+                Cell u = unknowns.pop();
+                u.val = field.click(u);
+                if (u.val == BOMB) {
+                    System.out.println("HIT A BOMB!!");
+                    lost = true;
+                    break;
+                }
+                loadSimple(u, true);
             }
         }
         field.print();
+        System.out.println("Simple stack contains "+simple.size());
+        System.out.println("Recursive stack contains "+recursive.size());
+        System.out.println("Impossible stack contains "+impossible.size());
     }
 
-    private static void loadSimple(Cell c, boolean adjacents) {
+    private static void loadSimple(Cell c, boolean adj) {
         int i = c.x;
         int j = c.y;
         // Don't add zeroes
@@ -73,16 +88,16 @@ public class Sweeper {
             marked.push(c);
         } else if(c.val == 0) {
             zeroes.push(c);
-            adjacents = true;
+            adj = true;
         } else {
             // Move this to the top of the simple stack
-//            System.out.println("Adding ("+c.x+", "+c.y+")");
+            impossible.remove(c);
             recursive.remove(c);
             simple.remove(c);
             simple.push(c);
         }
         // Read adjacent squares
-        if(!adjacents) return;
+        if(!adj) return;
         if(i > 0) {
             if(j > 0) loadSimple(new Cell(i-1,j-1), false);
             loadSimple(new Cell(i-1,j), false);
