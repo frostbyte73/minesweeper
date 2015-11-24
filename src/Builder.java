@@ -14,6 +14,9 @@ public class Builder implements Minefield {
 
     @Override
     public int read(Point pt) {
+        if(!known[pt.x][pt.y]) {
+            return UNKNOWN;
+        }
         return field[pt.x][pt.y];
     }
 
@@ -41,24 +44,34 @@ public class Builder implements Minefield {
             click(new Point(x+1, y));
             click(new Point(x+1, y+1));
         }
-        print();
         return field[x][y];
     }
 
-    public void initialize(Point pt) {
+    @Override
+    public void flag(Point pt) {
+        int x = pt.x;
+        int y = pt.y;
+        known[x][y] = true;
+        if(field[x][y] != BOMB) {
+            System.out.println("Bomb incorrectly marked!");
+        }
+    }
+
+    private void initialize(Point pt) {
         int x, y, val;
-        boolean placed = false;
+        boolean placed;
         field = new int[16][30]; // Expert sized
         known = new boolean[16][30];
         // Place 99 bombs
         for(int i=0; i<99; i++) {
+            placed = false;
             while(!placed) {
                 x = ThreadLocalRandom.current().nextInt(1, 16);
                 y = ThreadLocalRandom.current().nextInt(1, 30);
                 // Starting click should always be 0
                 if(Math.abs(pt.x-x) < 2 && Math.abs(pt.y-y) < 2) continue;
-                if (field[x][y] != -1) { // No duplicates
-                    field[x][y] = -1;
+                if (field[x][y] != BOMB) { // No duplicates
+                    field[x][y] = BOMB;
                     placed = true;
                 }
             }
@@ -66,19 +79,19 @@ public class Builder implements Minefield {
         // Fill in the values
         for(int i=0; i<16; i++) {
             for(int j=0; j<30; j++) {
-                if(field[i][j] == -1) break; // Don't override bombs
+                if(field[i][j] == BOMB) continue; // Don't override bombs
                 val = 0;
                 if(i > 0) {
-                    if(j > 0 && field[i-1][j-1] == -1) val++;
-                    if(field[i-1][j] == -1) val++;
-                    if(j < 29 && field[i-1][j+1] == -1) val++;
+                    if(j > 0 && field[i-1][j-1] == BOMB) val++;
+                    if(field[i-1][j] == BOMB) val++;
+                    if(j < 29 && field[i-1][j+1] == BOMB) val++;
                 }
-                if(j > 0 && field[i][j-1] == -1) val++;
-                if(j < 29 && field[i][j+1] == -1) val++;
+                if(j > 0 && field[i][j-1] == BOMB) val++;
+                if(j < 29 && field[i][j+1] == BOMB) val++;
                 if(i < 15) {
-                    if(j > 0 && field[i+1][j-1] == -1) val++;
-                    if(field[i+1][j] == -1) val++;
-                    if(j < 29 && field[i+1][j+1] == -1) val++;
+                    if(j > 0 && field[i+1][j-1] == BOMB) val++;
+                    if(field[i+1][j] == BOMB) val++;
+                    if(j < 29 && field[i+1][j+1] == BOMB) val++;
                 }
                 field[i][j] = val;
             }
@@ -91,10 +104,15 @@ public class Builder implements Minefield {
                 if(!known[i][j]) {
                     System.out.print("?");
                 } else {
-                    System.out.print(field[i][j]);
+                    if(field[i][j] == BOMB) {
+                        System.out.print("X");
+                    } else {
+                        System.out.print(field[i][j]);
+                    }
                 }
             }
             System.out.println();
         }
+        System.out.println();
     }
 }
