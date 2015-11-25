@@ -102,14 +102,15 @@ public class Builder implements Minefield {
         for(int i=0; i<16; i++) {
             for(int j=0; j<30; j++) {
                 if(!known[i][j]) {
-                    System.out.print("?");
+                    System.out.print(".");
                 } else {
                     if(field[i][j] == BOMB) {
-                        System.out.print("X");
+                        System.out.print("~");
                     } else {
                         System.out.print(field[i][j]);
                     }
                 }
+                System.out.print(" ");
             }
             System.out.println();
         }
