@@ -44,6 +44,9 @@ public class Sweeper {
         System.out.println("Game "+(Status==status.Won ? "Won!" : "Lost."));
      }
 
+    /**
+     * Initializes our minefield and starts the game
+     */
     private static void initialize() {
         field = new Cell[16][30];
         for(int i=0; i<16; i++) {
@@ -55,6 +58,9 @@ public class Sweeper {
         click(start);
     }
 
+    /**
+     * Tries to find a solution looking only at immediate neighbors
+     */
     private static void runSimple() {
         while(!simple.isEmpty()) {
             // Check for obvious solutions
@@ -77,6 +83,9 @@ public class Sweeper {
         }
     }
 
+    /**
+     * Tries to find a solution recursively
+     */
     private static void runRecursive() {
         impossible.addFirst(recursive.removeFirst()); //
 //        ArrayDeque<Cell> queue = new ArrayDeque<>();
@@ -86,9 +95,7 @@ public class Sweeper {
     }
 
     /**
-     * click
-     * clicks a cell on the field
-     * assumes cell is UNKNOWN
+     * Clicks an UNKNOWN cell on the field
      * @param c - cell to click
      */
     private static void click(Cell c) {
@@ -104,9 +111,7 @@ public class Sweeper {
     }
 
     /**
-     * initializeCell
-     * updates the cell's value and adds numbered cells to simple stack
-     * called by click, self
+     * Updates the cell's value and adds numbered cells to simple stack
      * @param c - clicked cell
      */
     private static void initializeCell(Cell c) {
@@ -134,16 +139,12 @@ public class Sweeper {
             }
         } else {
             // Cell is a number - move to top of simple stack
-            impossible.remove(c);
-            recursive.remove(c);
-            simple.remove(c);
-            simple.addFirst(c);
+            moveCellToTop(c);
         }
     }
 
     /**
-     * loadAdjacentData
-     * loads bomb and unknown data for newly clicked cell
+     * Loads bomb and unknown data for newly clicked cell
      * called by initializeCell
      * @param c - clicked cell
      */
@@ -169,8 +170,7 @@ public class Sweeper {
     }
 
     /**
-     * updateAdjacentCells
-     * adjusts unknown list and bomb count according to neighbor's status
+     * Adjusts unknown list and bomb count according to neighbor's status
      * @param c   - current cell
      * @param adj - adjacent cell
      */
@@ -188,9 +188,8 @@ public class Sweeper {
     }
 
     /**
-     * flag
-     * flags a mine on the field
-     * @param c - cell to flag
+     * Flags a mine on the field
+     * @param c - bomb cell
      */
     private static void flag(Cell c) {
         game.flag(c);
@@ -211,6 +210,11 @@ public class Sweeper {
         }
     }
 
+    /**
+     * Raises a neighbor's bomb count, and removes the bomb from unknowns
+     * @param c   - bomb cell
+     * @param adj - neighbor cell
+     */
     private static void raiseBombCount(Cell c, Cell adj) {
         if(adj.val == UNKNOWN) return;
         adj.unknowns.remove(c);
@@ -218,6 +222,10 @@ public class Sweeper {
         moveCellToTop(adj);
     }
 
+    /**
+     * Moves target cell to the top of the simple stack
+     * @param c - cell to move
+     */
     private static void moveCellToTop(Cell c) {
         impossible.remove(c);
         recursive.remove(c);
