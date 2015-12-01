@@ -62,7 +62,7 @@ public class Builder implements Minefield {
         boolean placed;
         field = new int[16][30]; // Expert sized
         known = new boolean[16][30];
-        // Place 99 bombs
+        // Place 99 mines
         for(int i=0; i<99; i++) {
             placed = false;
             while(!placed) {
@@ -79,7 +79,7 @@ public class Builder implements Minefield {
         // Fill in the values
         for(int i=0; i<16; i++) {
             for(int j=0; j<30; j++) {
-                if(field[i][j] == BOMB) continue; // Don't override bombs
+                if(field[i][j] == BOMB) continue; // Don't override mines
                 val = 0;
                 if(i > 0) {
                     if(j > 0 && field[i-1][j-1] == BOMB) val++;

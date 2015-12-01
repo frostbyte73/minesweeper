@@ -8,11 +8,23 @@ public class Sweeper {
 
     private static Cell[][] field;
 
+    /**
+     * This queue holds the cells whose information (neighboring mines and remaining unknowns)
+     * has been updated. We will do a quick check for single-cell solutions
+     */
     private static ArrayDeque<Cell> simple = new ArrayDeque<>();
-    private static ArrayDeque<Cell> recursive = new ArrayDeque<>();
+    /**
+     * This queue holds the cells with no obvious unmarked mines. We need to do a advanced search,
+     * checking which potential mines work with the neighboring cells as well
+     */
+    private static ArrayDeque<Cell> advanced = new ArrayDeque<>();
+    /**
+     * This queue is for cells on which a guess must be made. An example would be two ones next to
+     * each other, sharing two potential mines
+     */
     private static ArrayDeque<Cell> impossible = new ArrayDeque<>();
 
-    private static int BOMB = -1;
+    private static int MINE = -1;
     private static int UNKNOWN = -2;
 
     private static status Status = status.Running;
@@ -26,10 +38,12 @@ public class Sweeper {
         game.print();
         while(Status == status.Running) {
             // Check for obvious solutions first to save time
-            runSimple();
-            // Run recursive search once finished
-            if (!recursive.isEmpty()) {
-                runRecursive();
+            while(!simple.isEmpty()) {
+                runSimple(simple.removeFirst());
+            }
+            // Run advanced search once finished
+            if(!advanced.isEmpty()) {
+                runAdvanced(advanced.removeFirst());
             } else if(!impossible.isEmpty()){
                 // Both queues are empty - a random click must be made
                 // TODO: check probabilities
@@ -59,39 +73,72 @@ public class Sweeper {
     }
 
     /**
-     * Tries to find a solution looking only at immediate neighbors
+     * Looks for obvious solutions
      */
-    private static void runSimple() {
-        while(!simple.isEmpty()) {
-            // Check for obvious solutions
-            Cell c = simple.removeFirst();
-            if(c.val == c.bombs) {
-                // All bombs have been marked
-                while (!c.unknowns.isEmpty()) {
-                    click(c.unknowns.removeFirst());
-                    if(Status == status.Lost) return;
-                }
-            } else if (c.val - c.bombs == c.unknowns.size()) {
-                // All unknowns must be bombs
-                while (!c.unknowns.isEmpty()) {
-                    flag(c.unknowns.removeFirst());
-                }
-            } else {
-                // Need to run recursive search
-                recursive.addFirst(c);
+    protected static void runSimple(Cell c) {
+        // Check for obvious solutions
+        if(c.val == c.mines) {
+            // All mines have been marked
+            while(!c.unknowns.isEmpty()) {
+                click(c.unknowns.removeFirst());
+                if(Status == status.Lost) return;
             }
+            while(!c.neighbors.isEmpty()) {
+                // Break the neighbor link
+                c.neighbors.removeFirst().neighbors.remove(c);
+            }
+        } else if(c.val - c.mines == c.unknowns.size()) {
+            // All unknowns must be mines
+            while(!c.unknowns.isEmpty()) {
+                flag(c.unknowns.removeFirst());
+            }
+        } else {
+            // Need to run advanced search
+            advanced.addFirst(c);
         }
     }
 
     /**
-     * Tries to find a solution recursively
+     * Tries a more comprehensive search for solutions
      */
-    private static void runRecursive() {
-        impossible.addFirst(recursive.removeFirst()); //
-//        ArrayDeque<Cell> queue = new ArrayDeque<>();
-//        Cell c = recursive.removeFirst();
-//        // TODO: run recursive search
-//        impossible.addFirst(c);
+    protected static void runAdvanced(Cell c) {
+        boolean found = false;
+        // Loop over each neighbor
+        for(Iterator<Cell> i = c.neighbors.iterator(); i.hasNext();) {
+            Cell n = i.next();
+            // Split c's neighbors into shared or unshared with n
+            ArrayDeque<Cell> shared = new ArrayDeque<>();
+            ArrayDeque<Cell> unshared = new ArrayDeque<>();
+            for(Iterator<Cell> j = c.neighbors.iterator(); j.hasNext();) {
+                Cell s = j.next();
+                if(n.neighbors.contains(s)) {
+                    shared.addFirst(s);
+                } else {
+                    unshared.addFirst(s);
+                }
+            }
+            // If the neighbor shares all
+            if(unshared.isEmpty()) continue;
+            if(shared.size() == n.neighbors.size() && n.val-n.mines == c.val-c.mines) {
+                // All remaining bombs lie in the shared spaces - click all unshared
+                while(!unshared.isEmpty()) {
+                    click(unshared.removeFirst());
+                }
+                found = true;
+            }
+            if(n.val-n.mines < shared.size() && c.val-c.mines == unshared.size()+n.val-n.mines) {
+                // Sharing as many as possible, there are just enough unshared cells for the remaining mines
+                while(!unshared.isEmpty()) {
+                    flag(unshared.removeFirst());
+                }
+                found = true;
+            }
+        }
+        if(found) {
+            simple.addFirst(c);
+        } else {
+            impossible.addFirst(c);
+        }
     }
 
     /**
@@ -99,12 +146,11 @@ public class Sweeper {
      * @param c - cell to click
      */
     private static void click(Cell c) {
-        if (game.click(c) == BOMB) {
-            System.out.println("Bomb hit on ("+c.x+", "+c.y+")");
+        if(game.click(c) == MINE) {
+            System.out.println("Mine hit on ("+c.x+", "+c.y+")");
             Status = status.Lost;
             return;
         }
-//        game.print();
         // Update field with the new value
         initializeCell(c);
 
@@ -144,7 +190,7 @@ public class Sweeper {
     }
 
     /**
-     * Loads bomb and unknown data for newly clicked cell
+     * Loads mine and unknown data for newly clicked cell
      * called by initializeCell
      * @param c - clicked cell
      */
@@ -153,8 +199,8 @@ public class Sweeper {
         if(c.val <= 0) return;
         int i = c.x;
         int j = c.y;
-        // Count bombs and fill unknowns
-        c.bombs = 0;
+        // Count mines and fill unknowns
+        c.mines = 0;
         if(i > 0) {
             if(j > 0) updateAdjacentCells(c, field[i-1][j-1]);
             updateAdjacentCells(c, field[i-1][j]);
@@ -170,8 +216,8 @@ public class Sweeper {
     }
 
     /**
-     * Adjusts unknown list and bomb count according to neighbor's status
-     * @param c   - current cell
+     * Adjusts unknown list and mine count according to neighbor's status
+     * @param c   - clicked cell
      * @param adj - adjacent cell
      */
     private static void updateAdjacentCells(Cell c, Cell adj) {
@@ -180,45 +226,49 @@ public class Sweeper {
         } else {
             c.unknowns.remove(adj);
         }
-        if(adj.val == BOMB) c.bombs++;
-        if(c.val != UNKNOWN && adj.unknowns.contains(c)) {
+        if(adj.val == MINE) c.mines++;
+        if(adj.unknowns.contains(c)) {
             adj.unknowns.remove(c);
+            if(adj.val > adj.mines) {
+                adj.neighbors.addFirst(c);
+                c.neighbors.addFirst(adj);
+            }
             moveCellToTop(adj);
         }
     }
 
     /**
      * Flags a mine on the field
-     * @param c - bomb cell
+     * @param c - mine cell
      */
     private static void flag(Cell c) {
         game.flag(c);
-        c.val = BOMB;
+        c.val = MINE;
         int i = c.x;
         int j = c.y;
         if(i > 0) {
-            if(j > 0) raiseBombCount(c, field[i-1][j-1]);
-            raiseBombCount(c, field[i-1][j]);
-            if(j < 29) raiseBombCount(c, field[i-1][j+1]);
+            if(j > 0) raiseMineCount(c, field[i-1][j-1]);
+            raiseMineCount(c, field[i-1][j]);
+            if(j < 29) raiseMineCount(c, field[i-1][j+1]);
         }
-        if(j > 0) raiseBombCount(c, field[i][j-1]);
-        if(j < 29) raiseBombCount(c, field[i][j+1]);
+        if(j > 0) raiseMineCount(c, field[i][j-1]);
+        if(j < 29) raiseMineCount(c, field[i][j+1]);
         if(i < 15) {
-            if (j > 0) raiseBombCount(c, field[i+1][j-1]);
-            raiseBombCount(c, field[i+1][j]);
-            if (j < 29) raiseBombCount(c, field[i+1][j+1]);
+            if (j > 0) raiseMineCount(c, field[i+1][j-1]);
+            raiseMineCount(c, field[i+1][j]);
+            if (j < 29) raiseMineCount(c, field[i+1][j+1]);
         }
     }
 
     /**
-     * Raises a neighbor's bomb count, and removes the bomb from unknowns
-     * @param c   - bomb cell
+     * Raises a neighbor's mine count, and removes the mine from unknowns
+     * @param c   - mine cell
      * @param adj - neighbor cell
      */
-    private static void raiseBombCount(Cell c, Cell adj) {
+    private static void raiseMineCount(Cell c, Cell adj) {
         if(adj.val == UNKNOWN) return;
         adj.unknowns.remove(c);
-        adj.bombs++;
+        adj.mines++;
         moveCellToTop(adj);
     }
 
@@ -228,7 +278,7 @@ public class Sweeper {
      */
     private static void moveCellToTop(Cell c) {
         impossible.remove(c);
-        recursive.remove(c);
+        advanced.remove(c);
         simple.remove(c);
         simple.addFirst(c);
     }
