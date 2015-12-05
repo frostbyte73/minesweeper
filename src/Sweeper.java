@@ -47,8 +47,7 @@ public class Sweeper {
             } else if(!impossible.isEmpty()){
                 // Both queues are empty - a random click must be made
                 // TODO: check probabilities
-                System.out.println(impossible.size()+" Cells in impossible.");
-                Status = status.Lost;
+                click(impossible.removeFirst().unknowns.removeFirst());
             } else {
                 // All stacks empty; game won
                 Status = status.Won;
@@ -76,6 +75,7 @@ public class Sweeper {
      * Looks for obvious solutions
      */
     protected static void runSimple(Cell c) {
+        if(c.val == MINE) System.out.println("LOOKIN AT MINES");
         // Check for obvious solutions
         if(c.val == c.mines) {
             // All mines have been marked
@@ -103,40 +103,35 @@ public class Sweeper {
      */
     protected static void runAdvanced(Cell c) {
         boolean found = false;
+//        game.print();
         // Loop over each neighbor
-        for(Iterator<Cell> i = c.neighbors.iterator(); i.hasNext();) {
-            Cell n = i.next();
-            // Split c's neighbors into shared or unshared with n
+        for (Cell n : c.neighbors) {
+            // Split c's unknowns into shared or unshared with n
             ArrayDeque<Cell> shared = new ArrayDeque<>();
             ArrayDeque<Cell> unshared = new ArrayDeque<>();
-            for(Iterator<Cell> j = c.neighbors.iterator(); j.hasNext();) {
-                Cell s = j.next();
-                if(n.neighbors.contains(s)) {
+            for (Cell s : c.unknowns) {
+                if (n.unknowns.contains(s)) {
                     shared.addFirst(s);
                 } else {
                     unshared.addFirst(s);
                 }
             }
-            // If the neighbor shares all
-            if(unshared.isEmpty()) continue;
-            if(shared.size() == n.neighbors.size() && n.val-n.mines == c.val-c.mines) {
+            if (shared.size() == n.unknowns.size() && n.val - n.mines == c.val - c.mines) {
                 // All remaining bombs lie in the shared spaces - click all unshared
-                while(!unshared.isEmpty()) {
+                while (!unshared.isEmpty()) {
                     click(unshared.removeFirst());
                 }
                 found = true;
             }
-            if(n.val-n.mines < shared.size() && c.val-c.mines == unshared.size()+n.val-n.mines) {
+            if (n.val - n.mines < shared.size() && c.val - c.mines == unshared.size() + n.val - n.mines) {
                 // Sharing as many as possible, there are just enough unshared cells for the remaining mines
-                while(!unshared.isEmpty()) {
+                while (!unshared.isEmpty()) {
                     flag(unshared.removeFirst());
                 }
                 found = true;
             }
         }
-        if(found) {
-            simple.addFirst(c);
-        } else {
+        if(!found) {
             impossible.addFirst(c);
         }
     }
@@ -266,7 +261,7 @@ public class Sweeper {
      * @param adj - neighbor cell
      */
     private static void raiseMineCount(Cell c, Cell adj) {
-        if(adj.val == UNKNOWN) return;
+        if(adj.val < 0) return;
         adj.unknowns.remove(c);
         adj.mines++;
         moveCellToTop(adj);
