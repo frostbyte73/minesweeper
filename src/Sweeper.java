@@ -1,10 +1,11 @@
+import java.io.IOException;
 import java.util.*;
 
 /**
  * Created by David on 11/20/2015.
  */
 public class Sweeper {
-    private static Minefield game = new Builder();
+    private static Minefield game = new Reader();
 
     private static Cell[][] field;
 
@@ -24,8 +25,8 @@ public class Sweeper {
      */
     private static ArrayDeque<Cell> impossible = new ArrayDeque<>();
 
-    private static int MINE = -1;
-    private static int UNKNOWN = -2;
+    protected static int MINE = -1;
+    protected static int UNKNOWN = -2;
 
     private static status Status = status.Running;
 
@@ -35,7 +36,6 @@ public class Sweeper {
 
     public static void main(String[] args) {
         initialize();
-        game.print();
         while(Status == status.Running) {
             // Check for obvious solutions first to save time
             while(!simple.isEmpty()) {
@@ -75,7 +75,6 @@ public class Sweeper {
      * Looks for obvious solutions
      */
     protected static void runSimple(Cell c) {
-        if(c.val == MINE) System.out.println("LOOKIN AT MINES");
         // Check for obvious solutions
         if(c.val == c.mines) {
             // All mines have been marked
@@ -103,7 +102,6 @@ public class Sweeper {
      */
     protected static void runAdvanced(Cell c) {
         boolean found = false;
-//        game.print();
         // Loop over each neighbor
         for (Cell n : c.neighbors) {
             // Split c's unknowns into shared or unshared with n
@@ -141,8 +139,14 @@ public class Sweeper {
      * @param c - cell to click
      */
     private static void click(Cell c) {
-        if(game.click(c) == MINE) {
-            System.out.println("Mine hit on ("+c.x+", "+c.y+")");
+        try {
+            if(game.click(c) == MINE) {
+                System.out.println("Mine hit on ("+c.x+", "+c.y+")");
+                Status = status.Lost;
+                return;
+            }
+        } catch (Exception e) {
+            System.out.println("Game could not be opened");
             Status = status.Lost;
             return;
         }
