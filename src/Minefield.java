@@ -11,5 +11,4 @@ public interface Minefield {
     int read(Point pt);                     // Read the value of a square
     int click(Point pt) throws IOException, AWTException, InterruptedException; // Click a square, and return the value
     void flag(Point pt);                    // Drop a flag on a square
-    void print();                           // Prints the field
 }

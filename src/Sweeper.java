@@ -1,11 +1,10 @@
-import java.io.IOException;
 import java.util.*;
 
 /**
  * Created by David on 11/20/2015.
  */
 public class Sweeper {
-    private static Minefield game = new Reader();
+    private static Reader game = new Reader();
 
     private static Cell[][] field;
 
@@ -13,17 +12,17 @@ public class Sweeper {
      * This queue holds the cells whose information (neighboring mines and remaining unknowns)
      * has been updated. We will do a quick check for single-cell solutions
      */
-    private static ArrayDeque<Cell> simple = new ArrayDeque<>();
+    private static ArrayDeque<Cell> simple;
     /**
      * This queue holds the cells with no obvious unmarked mines. We need to do a advanced search,
      * checking which potential mines work with the neighboring cells as well
      */
-    private static ArrayDeque<Cell> advanced = new ArrayDeque<>();
+    private static ArrayDeque<Cell> advanced;
     /**
      * This queue is for cells on which a guess must be made. An example would be two ones next to
      * each other, sharing two potential mines
      */
-    private static ArrayDeque<Cell> impossible = new ArrayDeque<>();
+    private static ArrayDeque<Cell> impossible;
 
     protected static int MINE = -1;
     protected static int UNKNOWN = -2;
@@ -34,33 +33,42 @@ public class Sweeper {
         Running, Lost, Won
     }
 
+    // TODO: keep track of all unknowns
     public static void main(String[] args) {
         initialize();
-        while(Status == status.Running) {
-            // Check for obvious solutions first to save time
-            while(!simple.isEmpty()) {
-                runSimple(simple.removeFirst());
+        while (Status != status.Won) {
+            while (Status == status.Running) {
+                // Check for obvious solutions first to save time
+                while (!simple.isEmpty()) {
+                    runSimple(simple.removeFirst());
+                }
+                // Run advanced search once finished
+                if (!advanced.isEmpty()) {
+                    runAdvanced(advanced.removeFirst());
+                } else if (!impossible.isEmpty()) {
+                    // Both queues are empty - a random click must be made
+                    // TODO: check probabilities
+                    // TODO: NoSuchElementException
+                    click(impossible.removeFirst().unknowns.removeFirst());
+                } else {
+                    // All stacks empty; game won
+                    Status = status.Won;
+                }
             }
-            // Run advanced search once finished
-            if(!advanced.isEmpty()) {
-                runAdvanced(advanced.removeFirst());
-            } else if(!impossible.isEmpty()){
-                // Both queues are empty - a random click must be made
-                // TODO: check probabilities
-                click(impossible.removeFirst().unknowns.removeFirst());
-            } else {
-                // All stacks empty; game won
-                Status = status.Won;
+            if(Status == status.Lost) {
+                initialize();
+                game.restart();
+                Status = status.Running;
             }
         }
-        game.print();
-        System.out.println("Game "+(Status==status.Won ? "Won!" : "Lost."));
-     }
-
+    }
     /**
      * Initializes our minefield and starts the game
      */
     private static void initialize() {
+        simple = new ArrayDeque<>();
+        advanced = new ArrayDeque<>();
+        impossible = new ArrayDeque<>();
         field = new Cell[16][30];
         for(int i=0; i<16; i++) {
             for(int j=0; j<30; j++) {
