@@ -7,6 +7,8 @@ import com.sun.jna.*;
 import com.sun.jna.win32.*;
 import com.sun.jna.platform.win32.WinDef.HWND;
 
+import javax.sound.midi.SysexMessage;
+
 /**
  * Created by David on 11/20/2015.
  * This class interacts with Windows minesweeper.
@@ -14,6 +16,9 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 public class Reader implements Minefield {
 
     private boolean initialized = false;
+    private BufferedImage img;
+    private Rectangle gameRect;
+    private Robot robot;
     private int LEFT_BUFFER = 15;
     private int TOP_BUFFER = 100;
     private int CELL_SIZE = 16;
@@ -21,7 +26,6 @@ public class Reader implements Minefield {
     private int fieldY;
     private int width;
     private int height;
-    private Robot robot;
 
     public interface User32 extends StdCallLibrary {
         User32 INSTANCE = (User32) Native.loadLibrary("user32", User32.class,
@@ -34,19 +38,31 @@ public class Reader implements Minefield {
 
     @Override
     public int read(Point pt) {
-        int x = (pt.y*CELL_SIZE)+8;
+        int x = (pt.y*CELL_SIZE)+9;
         int y = (pt.x*CELL_SIZE)+4;
         return read(x, y);
     }
 
     private int read(int x, int y) {
-        BufferedImage img = robot.createScreenCapture(new Rectangle(fieldX,fieldY,width,height));
         Color color = new Color(img.getRGB(x, y));
-        System.out.println(color.getRed()+" "+color.getGreen()+" "+color.getBlue());
-//        if(color.getBlue() > 200) return 1;
-//        if(color.getRed() > 200) return 3;
-
-        return MINE;
+        Color edge = new Color(img.getRGB(x+6,y+11));
+        if(edge.getBlue() == 128 && edge.getRed() == 128 && edge.getGreen() == 128) return UNKNOWN;
+        if(edge.getRed() == 255) return MINE;
+        if(color.getBlue() == 255) return 1;
+        if(color.getBlue() == 192) return 0;
+        if(color.getRed() == 255) return 3;
+        if(color.getGreen() == 128) {
+            if(color.getBlue() == 128) {
+                if(color.getRed() == 128) {
+                    return 8;
+                }
+                return 6;
+            }
+            return 2;
+        }
+        if(color.getBlue() == 128) return 4;
+        if(color.getRed() == 128) return 5;
+        return 7;
     }
 
     @Override
@@ -54,14 +70,16 @@ public class Reader implements Minefield {
         if(!initialized) {
             initialize();
             initialized = true;
-            System.out.println("INITIALIZED");
         }
-        int x = fieldX+(pt.y*CELL_SIZE)+8;
-        int y = fieldY+(pt.x*CELL_SIZE)+4;
-        robot.mouseMove(x,y);
+        int x = (pt.y*CELL_SIZE)+9;
+        int y = (pt.x*CELL_SIZE)+4;
+        robot.mouseMove(fieldX+x,fieldY+y);
         robot.mousePress(InputEvent.BUTTON1_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_MASK);
-        return MINE;//read(x, y);
+        img = robot.createScreenCapture(gameRect);
+        int val = read(x, y);
+//        System.out.println(pt.x+" "+pt.y+" "+val);
+        return val;
     }
 
     @Override
@@ -69,8 +87,8 @@ public class Reader implements Minefield {
         int x = fieldX+(pt.y*CELL_SIZE)+8;
         int y = fieldY+(pt.x*CELL_SIZE)+4;
         robot.mouseMove(x,y);
-        robot.mousePress(InputEvent.BUTTON2_MASK);
-        robot.mouseRelease(InputEvent.BUTTON2_MASK);
+        robot.mousePress(InputEvent.BUTTON3_MASK);
+        robot.mouseRelease(InputEvent.BUTTON3_MASK);
     }
 
     // Don't need to print anything - ignore this
@@ -82,7 +100,7 @@ public class Reader implements Minefield {
     private void initialize() throws IOException, AWTException, InterruptedException {
         File f = new File("Minesweeper.exe");
         Runtime.getRuntime().exec(f.getAbsolutePath());
-        Thread.sleep(1000);
+        Thread.sleep(100);
         robot = new Robot();
         HWND hwnd = User32.INSTANCE.FindWindow(null, "Minesweeper");
         if(hwnd == null) return;
@@ -92,9 +110,6 @@ public class Reader implements Minefield {
         fieldY = rect[1]+TOP_BUFFER;
         width = rect[2]-rect[0]-LEFT_BUFFER;
         height = rect[3]-rect[1]-TOP_BUFFER;
-//        System.out.println("fieldX: "+fieldX);
-//        System.out.println("fieldY: "+fieldY);
-//        System.out.println("width: "+width);
-//        System.out.println("height: "+height);
+        gameRect = new Rectangle(fieldX,fieldY,width,height);
     }
 }

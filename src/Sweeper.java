@@ -146,7 +146,7 @@ public class Sweeper {
                 return;
             }
         } catch (Exception e) {
-            System.out.println("Game could not be opened");
+            e.printStackTrace();
             Status = status.Lost;
             return;
         }
